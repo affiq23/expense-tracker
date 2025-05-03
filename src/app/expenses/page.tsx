@@ -21,33 +21,49 @@ export default function ExpensesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    async function fetchExpenses() {
-      setLoading(true);
-      try {
-        const response = await fetch(`${API_URL}/expenses`);
-        if (!response.ok) throw new Error("Failed to fetch expenses");
-        const data: Expense[] = await response.json();
-        setExpenses(data);
-        setError("");
-      } catch (err: any) {
-        console.error("Error fetching expenses:", err);
-        setError(err.message || "Failed to load expenses");
-      } finally {
-        setLoading(false);
-      }
+  // Fetch the latest list of expenses
+  async function fetchExpenses() {
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/expenses`);
+      if (!response.ok) throw new Error("Failed to fetch expenses");
+      const data: Expense[] = await response.json();
+      setExpenses(data);
+      setError("");
+    } catch (err: any) {
+      console.error("Error fetching expenses:", err);
+      setError(err.message || "Failed to load expenses");
+    } finally {
+      setLoading(false);
     }
+  }
+
+  // Delete a single expense and refresh the list
+  async function handleDelete(id: string) {
+    if (!confirm("Are you sure you want to delete this expense?")) return;
+    try {
+      const response = await fetch(`${API_URL}/expenses/${id}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) throw new Error("Failed to delete expense");
+      await fetchExpenses();
+    } catch (err: any) {
+      console.error("Error deleting expense:", err);
+      alert(err.message || "Could not delete expense");
+    }
+  }
+
+  useEffect(() => {
     fetchExpenses();
   }, []);
 
-  // Format currency
+  // Formatters
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: "USD",
     }).format(amount);
 
-  // Format date
   const formatDate = (dateString: string) =>
     new Intl.DateTimeFormat("en-US", {
       year: "numeric",
@@ -69,7 +85,9 @@ export default function ExpensesPage() {
         </div>
 
         {loading ? (
-          <div className="py-10 text-center text-gray-400">Loading expenses...</div>
+          <div className="py-10 text-center text-gray-400">
+            Loading expenses…
+          </div>
         ) : error ? (
           <div className="py-10 text-center text-red-500">{error}</div>
         ) : expenses.length === 0 ? (
@@ -96,6 +114,9 @@ export default function ExpensesPage() {
                   <th className="px-6 py-3 text-center text-xs font-semibold uppercase text-gray-300">
                     Receipt
                   </th>
+                  <th className="px-6 py-3 text-center text-xs font-semibold uppercase text-gray-300">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -104,7 +125,9 @@ export default function ExpensesPage() {
                     key={expense.id}
                     className="bg-gray-800 hover:bg-gray-700 transition"
                   >
-                    <td className="px-6 py-4 text-sm">{formatDate(expense.date)}</td>
+                    <td className="px-6 py-4 text-sm">
+                      {formatDate(expense.date)}
+                    </td>
                     <td className="px-6 py-4 text-sm">{expense.category}</td>
                     <td className="px-6 py-4 text-sm">{expense.memo}</td>
                     <td className="px-6 py-4 text-sm text-right font-medium">
@@ -113,7 +136,7 @@ export default function ExpensesPage() {
                     <td className="px-6 py-4 text-center text-sm">
                       {expense.receipt_url ? (
                         <a
-                          href={expense.receipt_url}
+                          href={`${API_URL}${expense.receipt_url}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-blue-400 hover:text-blue-200 transition"
@@ -123,6 +146,14 @@ export default function ExpensesPage() {
                       ) : (
                         <span className="text-gray-500">—</span>
                       )}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <button
+                        onClick={() => handleDelete(expense.id)}
+                        className="px-3 py-1 bg-red-600 hover:bg-red-500 text-white rounded transition"
+                      >
+                        Delete
+                      </button>
                     </td>
                   </tr>
                 ))}
